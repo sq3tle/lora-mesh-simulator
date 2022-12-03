@@ -33,10 +33,10 @@ class RadioEnvironment(object):
 
 
 class PhysicalLayer:
-    def __init__(self, name, geo, env, rf):
+    def __init__(self, name, env, rf):
         self.id = name
         self.env = env
-        self.geo = geo
+        self.geo = None
 
         self.rf = rf
         self.rf_pipe = rf.rx()
