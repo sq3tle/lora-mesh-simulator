@@ -1,0 +1,35 @@
+{
+  "settings": {
+    "spreading_factor": 7,
+    "bandwidth": 0.125,
+    "phy_header_length": 11
+  },
+  "devices": [
+    {
+      "id": "alfa",
+      "tx_power": 14,
+      "path": [
+        {
+          "time": 0,
+          "lat": 50.065607816004636,
+          "lon": 19.9155651840895,
+          "alt": 3
+        }
+      ],
+      "transmissions": [
+        {
+          "data": "XD",
+          "interval": 1500,
+          "length": 10,
+          "destination": "all"
+        },
+        {
+          "data": "XD2",
+          "interval": 2000,
+          "length": 2,
+          "destination": "all"
+        }
+      ]
+    }
+  ]
+}
