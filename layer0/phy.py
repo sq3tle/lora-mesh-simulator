@@ -74,7 +74,9 @@ class PhysicalLayer:
                 self.rx_mode = False
                 buffer = self.received
                 self.received = []
+                yield self.env.timeout(2)
                 return buffer
+
         return []
 
     def _rx_listener(self):

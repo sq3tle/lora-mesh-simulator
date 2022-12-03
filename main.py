@@ -48,27 +48,35 @@ class Device:
         self.phy = PhysicalLayer(name, self.env, self.rf)
         self.transmissions = []
         self.path = None
-
+        self.neighbors = None
         self.tx_power = 14
+        self.env.process(self.update_device())
 
     def update_device(self):
-        pass
+        if self.neighbors:
+            self.neighbors = list(filter(lambda x: x['last_heard'] > self.env.now + 5000, self.neighbors))
+        self.phy.geo = self.path.get_location(self.env.now)
+        yield self.env.timeout(1)
 
     def test_loop(self):
-        self.phy.geo = self.path.get_location(self.env.now)
-        yield self.env.process(self.phy.rx(randint(0, 1000)))
+        self.env.process(self.update_device())
         while True:
-            self.phy.geo = self.path.get_location(self.env.now)
-            target = choice([x for x in ["alfa", "d13", "blonia"] if x != self.phy.id])
-            payload = {"from": self.phy.id, "dest": target,
-                       "hops": [], "payload": "Test"}
+            if self.transmissions:
+                payload = {"from": self.phy.id, "dest": "d13",
+                           "hops": [], "payload": "Ping"}
 
-            yield self.env.process(self.phy.tx(payload))
-            received = yield self.env.process(self.phy.rx(randint(1000, 4000)))
+                yield self.env.process(self.phy.tx(payload))
+                yield self.env.timeout(1000)
+            received = yield self.env.process(self.phy.rx_one(randint(1000, 4000)))
 
             if received:
                 for packet in received:
-                    if packet['payload']["dest"] != self.phy.id and len(packet['payload']["hops"]) < 1:
+                    if packet['payload']["dest"] == self.phy.id:
+                        payload = {"from": self.phy.id, "dest": packet['payload']["from"],
+                                   "hops": [], "payload": "Pong"}
+                        yield self.env.process(self.phy.tx(payload))
+
+                    elif packet['payload']["dest"] != self.phy.id and len(packet['payload']["hops"]) < 1:
                         packet['payload']["hops"].append(self.phy.id)
                         yield self.env.process(self.phy.tx(packet['payload']))
 
@@ -106,16 +114,12 @@ def parse_input(environment, filename):
 
             if device.get('transmissions', False):
                 transmissions = device.get('transmissions')
-                if len(transmissions) == 0:
-                    raise Exception('input json device transmissions list empty')
-                for transmission in transmissions:
-                    new_device.transmissions.append(
-                        Transmission(transmission.get('data', ''), transmission.get('interval', 1000),
-                                     transmission.get('lenght', 0), transmission.get('destination', 'all'))
-                    )
-
-            else:
-                raise Exception('input json device no transmissions section')
+                if len(transmissions) != 0:
+                    for transmission in transmissions:
+                        new_device.transmissions.append(
+                            Transmission(transmission.get('data', ''), transmission.get('interval', 1000),
+                                         transmission.get('lenght', 0), transmission.get('destination', 'all'))
+                        )
 
             devices.append(new_device)
 

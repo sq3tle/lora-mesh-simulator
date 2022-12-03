@@ -1,6 +1,6 @@
 {
   "settings": {
-    "spreading_factor": 7,
+    "spreading_factor": 8,
     "bandwidth": 0.125,
     "phy_header_length": 11
   },
@@ -15,14 +15,6 @@
           "lon": 19.9155651840895,
           "alt": 3
         }
-      ],
-      "transmissions": [
-        {
-          "data": "XD",
-          "interval": 1500,
-          "length": 10,
-          "destination": "all"
-        }
       ]
     },
     {
@@ -34,14 +26,6 @@
           "lat": 50.070749606821,
           "lon": 19.90674912815427,
           "alt": 1.5
-        }
-      ],
-      "transmissions": [
-        {
-          "data": "XD",
-          "interval": 1500,
-          "length": 10,
-          "destination": "all"
         }
       ]
     },
