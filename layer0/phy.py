@@ -1,5 +1,7 @@
 import logging
+
 from simpy import core, Store
+
 import layer0.utils as utils
 
 logger = logging.getLogger('sim')
@@ -12,7 +14,6 @@ class RadioEnvironment(object):
     HEADER = 11
     BW = 0.125
     FREQ = 868
-    TXPWR = 14
 
     def __init__(self, env, capacity=core.Infinity):
         self.env = env
@@ -33,18 +34,19 @@ class RadioEnvironment(object):
 
 class PhysicalLayer:
     def __init__(self, name, geo, env, rf):
-        self.name = name
+        self.id = name
         self.env = env
         self.geo = geo
 
         self.rf = rf
         self.rf_pipe = rf.rx()
-
-        self.received = []
-        self.rx = False
         self.env.process(self._rx_listener())
 
-    def _tx(self, data):
+        self.received = []
+        self.tx_power = 14
+        self.rx_mode = False
+
+    def tx(self, data):
         time_toa = utils.toa(len(data) + self.rf.HEADER, self.rf.SF)
         self._log(data, state="transmitted")
 
@@ -55,21 +57,21 @@ class PhysicalLayer:
 
         yield self.env.timeout(time_toa)
 
-    def _rx(self, timeout):
-        self.rx = True
+    def rx(self, timeout):
+        self.rx_mode = True
         yield self.env.timeout(timeout)
-        self.rx = False
+        self.rx_mode = False
 
         buffer = self.received
         self.received = []
         return buffer
 
-    def _rx_one(self, timeout):
-        self.rx = True
+    def rx_one(self, timeout):
+        self.rx_mode = True
         for _ in range(self, timeout):
             yield self.env.timeout(1)
             if self.received:
-                self.rx = False
+                self.rx_mode = False
                 buffer = self.received
                 self.received = []
                 return buffer
@@ -83,9 +85,9 @@ class PhysicalLayer:
 
                 link = utils.BudgetLinkCalculator(msg["sender"].geo, self.geo)
 
-                msg = {'sender': msg["sender"].name,
-                       'rssi': link.calculate_rssi(self.rf.TXPWR),
-                       'snr': link.calculate_snr(self.rf.TXPWR),
+                msg = {'sender': msg["sender"].id,
+                       'rssi': link.calculate_rssi(msg["sender"].tx_power),
+                       'snr': link.calculate_snr(msg["sender"].tx_power),
                        'toa': msg['time_toa'],
                        'payload': msg["payload"]}
 
@@ -101,6 +103,4 @@ class PhysicalLayer:
 
     def _log(self, msg, state="", warn=False):
         log = logger.warning if warn else logger.info
-        log("[%07.3fs @ %s]\t%s\t%s", self.env.now / 1000, self.name.rjust(7), state, msg)
-
-
+        log("[%07.3fs @ %s]\t%s\t%s", self.env.now / 1000, self.id.rjust(7), state, msg)

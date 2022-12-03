@@ -23,19 +23,19 @@ class Device:
         pass
 
     def test_loop(self):
-        yield self.env.process(self.phy._rx(randint(0, 1000)))
+        yield self.env.process(self.phy.rx(randint(0, 1000)))
         while True:
-            target = choice([x for x in ["alfa", "d13", "blonia"] if x != self.phy.name])
+            target = choice([x for x in ["alfa", "d13", "blonia"] if x != self.phy.id])
             payload = {"dest": target, "hops": [], "payload": "Test"}
 
-            yield self.env.process(self.phy._tx(payload))
-            received = yield self.env.process(self.phy._rx(randint(100, 3000)))
+            yield self.env.process(self.phy.tx(payload))
+            received = yield self.env.process(self.phy.rx(randint(100, 3000)))
 
             if received:
                 for packet in received:
-                    if packet['payload']["dest"] != self.phy.name and len(packet['payload']["hops"]) < 1:
-                        packet['payload']["hops"].append(self.phy.name)
-                        yield self.env.process(self.phy._tx(packet['payload']))
+                    if packet['payload']["dest"] != self.phy.id and len(packet['payload']["hops"]) < 1:
+                        packet['payload']["hops"].append(self.phy.id)
+                        yield self.env.process(self.phy.tx(packet['payload']))
 
 
 if __name__ == "__main__":
@@ -44,7 +44,6 @@ if __name__ == "__main__":
 
     Environment.rf = RadioEnvironment(Environment.env)
     Environment.rf.SF = 8
-    Environment.rf.TXPWR = 14
 
     devices = [
         Device("alfa", [(50.065607816004636, 19.9155651840895, 3)]),
