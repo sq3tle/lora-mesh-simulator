@@ -4,13 +4,27 @@ from random import choice, randint
 import simpy
 
 from layer0.phy import PhysicalLayer, RadioEnvironment
+from scipy import interpolate
 
 class Path:
     def __init__(self, path):
+
         self.path = path
 
-    def get_location(self,time):
-        pass
+        if len(path) < 2:
+            self.path.extend(path)
+
+        time = [p['time'] for p in path]
+        lat = [p['lat'] for p in path]
+        lon = [p['lon'] for p in path]
+        alt = [p['alt'] for p in path]
+
+        self.lat = interpolate.interp1d(time, lat, fill_value=(lat[0], lat[-1]), bounds_error=False)
+        self.lon = interpolate.interp1d(time, lon, fill_value=(lon[0], lon[-1]), bounds_error=False)
+        self.alt = interpolate.interp1d(time, alt, fill_value=(alt[0], alt[-1]), bounds_error=False)
+
+    def get_location(self, time):
+        return self.lat(time), self.lon(time), self.alt(time)
 
 class Transmission:
     def __init__(self, data, interval, lenght, destination):
