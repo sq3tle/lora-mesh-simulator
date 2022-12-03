@@ -22,11 +22,45 @@
           "interval": 1500,
           "length": 10,
           "destination": "all"
-        },
+        }
+      ]
+    },
+    {
+      "id": "d13",
+      "tx_power": 14,
+      "path": [
         {
-          "data": "XD2",
-          "interval": 2000,
-          "length": 2,
+          "time": 0,
+          "lat": 50.070749606821,
+          "lon": 19.90674912815427,
+          "alt": 1.5
+        }
+      ],
+      "transmissions": [
+        {
+          "data": "XD",
+          "interval": 1500,
+          "length": 10,
+          "destination": "all"
+        }
+      ]
+    },
+    {
+      "id": "blonia",
+      "tx_power": 14,
+      "path": [
+        {
+          "time": 0,
+          "lat": 50.060667559992204,
+          "lon": 19.909718523873615,
+          "alt": 1.5
+        }
+      ],
+      "transmissions": [
+        {
+          "data": "XD",
+          "interval": 1500,
+          "length": 10,
           "destination": "all"
         }
       ]

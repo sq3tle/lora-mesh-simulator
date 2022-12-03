@@ -2,13 +2,13 @@ import json
 from random import choice, randint
 
 import simpy
+from scipy import interpolate
 
 from layer0.phy import PhysicalLayer, RadioEnvironment
-from scipy import interpolate
+
 
 class Path:
     def __init__(self, path):
-
         self.path = path
 
         if len(path) < 2:
@@ -26,6 +26,7 @@ class Path:
     def get_location(self, time):
         return self.lat(time), self.lon(time), self.alt(time)
 
+
 class Transmission:
     def __init__(self, data, interval, lenght, destination):
         self.data = data
@@ -33,6 +34,7 @@ class Transmission:
         self.lenght = lenght
         self.destination = destination
         self.last_tx = None
+
 
 class Device:
     env = None
@@ -43,26 +45,26 @@ class Device:
         if not self.env or not self.rf:
             raise Exception("Please specify simulation and rf environments")
 
-        self.phy = PhysicalLayer(name, self.rf)
+        self.phy = PhysicalLayer(name, self.env, self.rf)
         self.transmissions = []
         self.path = None
 
         self.tx_power = 14
 
-    def set_geo(self, geo):
-        self.phy.geo = geo
-
     def update_device(self):
         pass
 
     def test_loop(self):
+        self.phy.geo = self.path.get_location(self.env.now)
         yield self.env.process(self.phy.rx(randint(0, 1000)))
         while True:
+            self.phy.geo = self.path.get_location(self.env.now)
             target = choice([x for x in ["alfa", "d13", "blonia"] if x != self.phy.id])
-            payload = {"dest": target, "hops": [], "payload": "Test"}
+            payload = {"from": self.phy.id, "dest": target,
+                       "hops": [], "payload": "Test"}
 
             yield self.env.process(self.phy.tx(payload))
-            received = yield self.env.process(self.phy.rx(randint(100, 3000)))
+            received = yield self.env.process(self.phy.rx(randint(1000, 4000)))
 
             if received:
                 for packet in received:
@@ -71,54 +73,65 @@ class Device:
                         yield self.env.process(self.phy.tx(packet['payload']))
 
 
-# if __name__ == "__main__":
-#
-#
-#     devices = [
-#         Device("alfa", [(50.065607816004636, 19.9155651840895, 3)]),
-#         Device("d13", [(50.070749606821, 19.90674912815427, 1.5)]),
-#         Device("blonia", [(50.060667559992204, 19.909718523873615, 1.5)]),
-#     ]
-#
-#     for device in devices:
-#         Environment.env.process(device.test_loop())
-#
-#     Environment.env.run(until=30 * 1000)
+
+def parse_input(environment, filename):
+    devices = []
+    with open(filename) as f_input:
+        sim_setup = json.loads(f_input.read())
+
+    if sim_setup.get('settings', False):
+        environment.rf.SF = sim_setup['settings'].get('spreading_factor', 7)
+        environment.rf.BW = sim_setup['settings'].get('bandwidth', 0.125)
+        environment.rf.HEADER = sim_setup['settings'].get('phy_header_length', 11)
+    else:
+        raise Exception('input json no settings section present')
+
+    if sim_setup.get('devices', False):
+        for device in sim_setup.get('devices'):
+
+            if device.get('id', False):
+                new_device = Device(device.get('id'))
+            else:
+                raise Exception('input json no device name present in device definition')
+
+            new_device.tx_power = device.get('tx_power', 14)
+
+            if device.get('path', False):
+                path = device.get('path')
+                if len(path) == 0:
+                    raise Exception('input json device path empty')
+                new_device.path = Path(path)
+            else:
+                raise Exception('input json device no path section')
+
+            if device.get('transmissions', False):
+                transmissions = device.get('transmissions')
+                if len(transmissions) == 0:
+                    raise Exception('input json device transmissions list empty')
+                for transmission in transmissions:
+                    new_device.transmissions.append(
+                        Transmission(transmission.get('data', ''), transmission.get('interval', 1000),
+                                     transmission.get('lenght', 0), transmission.get('destination', 'all'))
+                    )
+
+            else:
+                raise Exception('input json device no transmissions section')
+
+            devices.append(new_device)
+
+    else:
+        raise Exception('input json no devices section present')
+
+    return devices
 
 
-Environment = Device  # for more clarity
-Environment.env = simpy.Environment()
-Environment.rf = RadioEnvironment(Environment.env)
-devices = []
+if __name__ == "__main__":
+    Environment = Device  # for more clarity
+    Environment.env = simpy.Environment()
+    Environment.rf = RadioEnvironment(Environment.env)
 
-with open("input.json") as f_input:
-    sim_setup = json.loads(f_input.read())
+    devices = parse_input(Environment, "input.json")
+    for device in devices:
+        Environment.env.process(device.test_loop())
 
-if sim_setup.get('settings', False):
-    Environment.rf.SF = sim_setup['settings'].get('spreading_factor', 7)
-    Environment.rf.BW = sim_setup['settings'].get('bandwidth', 0.125)
-    Environment.rf.HEADER = sim_setup['settings'].get('phy_header_length', 11)
-else:
-    raise Exception('input json no settings section present')
-
-if sim_setup.get('devices', False):
-    for device in sim_setup.get('devices'):
-
-        if device.get('id',False):
-            new_device = Device(device.get('id'))
-        else:
-            raise Exception('input json no device name present in device definition')
-
-        new_device.tx_power = device.get('tx_power')
-
-        if device.get('path', False):
-            path = device.get('path')
-            if len(path) == 0:
-                raise Exception('input json device path empty')
-            device.path = Path(path)
-
-        else:
-            raise Exception('input json device no path section')
-
-else:
-    raise Exception('input json no devices section present')
+    Environment.env.run(until=10 * 1000)

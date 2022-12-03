@@ -68,7 +68,7 @@ class PhysicalLayer:
 
     def rx_one(self, timeout):
         self.rx_mode = True
-        for _ in range(self, timeout):
+        for _ in range(1, timeout):
             yield self.env.timeout(1)
             if self.received:
                 self.rx_mode = False
@@ -83,6 +83,9 @@ class PhysicalLayer:
 
             if self.rx and msg["time_begin"] == self.env.now:
 
+                if msg["sender"] == self:
+                    continue
+
                 link = utils.BudgetLinkCalculator(msg["sender"].geo, self.geo)
 
                 msg = {'sender': msg["sender"].id,
@@ -92,6 +95,7 @@ class PhysicalLayer:
                        'payload': msg["payload"]}
 
                 if utils.monte_carlo(self.rf.SF, msg['snr'], len(msg['payload']) + self.rf.HEADER):
+                    yield self.env.timeout(msg["toa"])
                     # self._log(msg, state="lost\t")
                     continue
 
@@ -99,7 +103,7 @@ class PhysicalLayer:
 
                 if self.rx:
                     self.received.append(msg)
-                    self._log(msg, state="received")
+                    self._log(msg['payload'], state="received")
 
     def _log(self, msg, state="", warn=False):
         log = logger.warning if warn else logger.info
