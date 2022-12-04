@@ -1,0 +1,4 @@
+simpy~=4.0.1
+numpy~=1.23.5
+geopy~=2.3.0
+scipy~=1.9.3
