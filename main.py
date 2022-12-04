@@ -80,14 +80,15 @@ class Device:
 
             if received:
                 for packet in received:
-                    if packet['payload']["dest"] == self.phy.id:
-                        payload = {"from": self.phy.id, "dest": packet['payload']["from"],
-                                   "hops": [], "payload": "Pong"}
-                        yield self.env.process(self.phy.tx(payload))
+                    if not packet['lost']:
+                        if packet['payload']["dest"] == self.phy.id:
+                            payload = {"from": self.phy.id, "dest": packet['payload']["from"],
+                                       "hops": [], "payload": "Pong"}
+                            yield self.env.process(self.phy.tx(payload))
 
-                    elif packet['payload']["dest"] != self.phy.id and len(packet['payload']["hops"]) < 1:
-                        packet['payload']["hops"].append(self.phy.id)
-                        yield self.env.process(self.phy.tx(packet['payload']))
+                        elif packet['payload']["dest"] != self.phy.id and len(packet['payload']["hops"]) < 1:
+                            packet['payload']["hops"].append(self.phy.id)
+                            yield self.env.process(self.phy.tx(packet['payload']))
 
 
 class DataInterface:
@@ -100,12 +101,14 @@ class DataInterface:
     def add_packet(self, time, data, lenght):
         chunk_time = time - self.last_chunk_end
         self._extend(chunk_time)
+        try:
+            if not self.data[chunk_time - lenght].get('packets', False):
+                self.data[chunk_time - lenght]['packets'] = []
 
-        if not self.data[chunk_time - lenght].get('packets', False):
-            self.data[chunk_time - lenght]['packets'] = []
-
-        self.data[chunk_time - lenght]['packets'].append(data)
-
+            self.data[chunk_time - lenght]['packets'].append(data)
+        except:
+            print("TODO ghost packet encountered")
+            pass
     def add_link(self, time, data):
         chunk_time = time - self.last_chunk_end
         self._extend(chunk_time)
@@ -206,8 +209,8 @@ def basic_use(input, output):
     for device in devices:
         Environment.env.process(device.test_loop())
 
-    for i in range(1, 2 + 1):
-        Environment.env.run(until=30000 * i)
+    for i in range(1, 1+1):
+        Environment.env.run(until=10000 * i)
         Environment.out.commit()
 
 
